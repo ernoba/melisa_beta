@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+use crate::mcore::adapter::json::Action::CreateNode;
+use crate::mcore::api::services::*;
 use crate::mcore::services::node::{NodeError, NodeManager, NodeProcess};
-use crate::mcore::{adapter::api::Action::CreateNode, api::services::create_node};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiRequest<T> {
@@ -37,9 +38,9 @@ pub fn api_create_node(request: &ApiRequest<CreateNodeData>) -> Result<NodeProce
     create_node(&request.data.name, request.data.pid)
 }
 
-// pub fn api_delete_node(hash: &str) -> bool {
-
-// }
+pub fn api_delete_node(hash: &str) -> Result<(), NodeError> {
+    delete_node(hash)
+}
 
 #[cfg(test)]
 mod test {
@@ -77,6 +78,27 @@ mod test {
         assert!(
             matches!(second, Err(NodeError::AlreadyExists)),
             "Harusnya gagal karena duplikat"
+        );
+    }
+
+    #[test]
+    fn test_delete_node() {
+        let _ = fs::write(NODE_FILE, "{}");
+        let manager = NodeManager::get_instance();
+        manager.reset_for_test();
+
+        let created_node = manager
+            .create("node untuk dihapus", 999)
+            .expect("Harusnya sukses membuat node sebelum dihapus");
+
+        let hash_target = created_node.hash;
+        let delete = delete_node(&hash_target);
+
+        // Pastikan sekarang harusnya sukses (Ok)
+        assert!(
+            delete.is_ok(),
+            "Harusnya sukses menghapus node, tetapi dapet error: {:?}",
+            delete
         );
     }
 }

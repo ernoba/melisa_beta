@@ -11,27 +11,6 @@ pub fn generate_hash(input: &str) -> String {
     result.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
-// fn ini di gunakan untuk mencari hash yang ada di nodes.json
-pub fn get_hash() -> Option<Vec<String>> {
-    let path = NODE_FILE;
-    let content = std::fs::read_to_string(path).unwrap_or_default();
-    let json_str = if content.trim().is_empty() {
-        "{}"
-    } else {
-        &content
-    };
-    let map: std::collections::HashMap<String, serde_json::Value> =
-        serde_json::from_str(json_str).unwrap_or_default();
-    let mut hash_list: Vec<String> = map.keys().cloned().collect();
-    hash_list.sort();
-
-    if hash_list.is_empty() {
-        None
-    } else {
-        Some(hash_list)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;

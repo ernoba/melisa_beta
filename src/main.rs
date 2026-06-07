@@ -1,35 +1,36 @@
 mod mcore;
 
-use crate::mcore::adapter::api;
-use mcore::services::hashing::get_hash;
-use mcore::services::node::NodeProcess;
+use mcore::services::node::{NodeManager, NodeError};
 
 // Di mulai untuk umat manusia
 // Juni 2026
 // Kita ke ijen kan?
 // Kamu masih ingetkan ...f
 fn main() {
-    // let name = "Example Pfsfdsroces";
-    // let pid = 1243466665;
-    // NodeProcess::new(name, pid).expect("Failed to create process");
-    // let hashes = "ad39d657c560d67dd124d5568411d7191d46c1671d676f10c7764a74f101f3d1";
-    // let d = NodeProcess::delete(hashes);
-    // match d {
-    //     Ok(_) => println!("Process deleted successfully."),
-    //     Err(e) => eprintln!("Failed to delete process: {}", e),
-    // }
-    let hashes = match get_hash() {
+    let name = "Example Pfsfdsfrocsffff";
+    let pid = 124346665;
+    
+    // Ambil instance manager sekali saja agar kode lebih bersih
+    let manager = NodeManager::get_instance();
+
+    // Tangani proses pembuatan secara elegan
+    match manager.create(name, pid) {
+        Ok(_) => println!("Node '{}' berhasil dibuat.", name),
+        Err(NodeError::AlreadyExists) => println!("Info: Node '{}' sudah aktif sebelumnya.", name),
+        Err(e) => println!("Error tidak terduga saat membuat node: {:?}", e),
+    }
+
+    // Ambil daftar hash (Pastikan nama method di NodeManager kamu adalah `list`)
+    let hashes = match manager.list() {
         Some(v) => v,
         None => {
-            println!("No processes found.");
+            println!("Tidak ada proses node yang ditemukan.");
             return;
         }
     };
-    // 2. Loop menggunakan .enumerate() untuk membuat nomor urut
+
+    println!("\n--- Daftar Hash Node Aktif ---");
     for (index, hash) in hashes.iter().enumerate() {
-        // index dimulai dari 0, jadi kita tambah 1 agar tampil: 1, 2, 3...
         println!("{}. {}", index + 1, hash);
     }
-    // let req = api::fake_data_request();
-    // api::execute(&req);
 }
