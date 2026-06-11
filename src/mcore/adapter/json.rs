@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::mcore::adapter::json::Action::CreateNode;
 use crate::mcore::api::services::*;
 use crate::mcore::errors::e_node::NodeError;
-use crate::mcore::melisad::services::node::{NodeManager, NodeProcess};
+use crate::mcore::melisad::services::node::NodeProcess;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ApiRequest<T> {
@@ -38,7 +37,13 @@ pub enum Action {
 }
 
 pub fn api_create_node(request: &ApiRequest<CreateNodeData>) -> Result<NodeProcess, NodeError> {
-    create_node(&request.data.name, request.data.pid, &request.data.url, &request.data.domain, &request.data.route_path)
+    create_node(
+        &request.data.name,
+        request.data.pid,
+        &request.data.url,
+        &request.data.domain,
+        &request.data.route_path,
+    )
 }
 
 pub fn api_delete_node(hash: &str) -> Result<(), NodeError> {
@@ -49,14 +54,20 @@ pub fn api_delete_node(hash: &str) -> Result<(), NodeError> {
 mod test {
     use super::*;
     use crate::mcore::melisad::services::mconf::NODE_FILE;
+    use crate::mcore::melisad::services::node::NODE_MANAGER;
+    use once_cell::sync::Lazy;
     use std::fs;
+    use std::sync::Mutex;
+
+    static TEST_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
     #[test]
     fn test_new_node() {
+        let _guard = TEST_LOCK.lock().unwrap();
         let _ = fs::write(NODE_FILE, "{}");
 
-        // Kosongkan cache di dalam Singleton NodeManager
-        NodeManager::get_instance().reset_for_test();
+        // Reset singleton node manager untuk test
+        NODE_MANAGER.reset_for_test();
 
         let node = ApiRequest {
             version: "1.0".to_string(),
@@ -64,10 +75,10 @@ mod test {
             request_id: "id001".to_string(),
             timestamp: 17828661,
             data: CreateNodeData {
-                name: "melisa api".to_string(),
+                name: "melisa-api".to_string(),
                 pid: 100000,
                 url: "http://localhost:3000".to_string(),
-                domain: "melisa a".to_string(),
+                domain: "melisa.local".to_string(),
                 route_path: "/beta".to_string(),
             },
         };
@@ -75,51 +86,94 @@ mod test {
         let first = api_create_node(&node);
         assert!(
             first.is_ok(),
-            "Harusnya sukses karena state sudah di-reset, tapi dapet: {:?}",
+            "Harusnya sukses membuat node baru, tapi dapet: {:?}",
             first
         );
 
-        let second = api_create_node(&node);
+        // Verify bahwa node berhasil dibuat
+        let first_node = first.unwrap();
+        assert_eq!(first_node.name, "melisa-api");
+        assert_eq!(
+            first_node.status,
+            crate::mcore::melisad::services::node::NodeStatus::Active
+        );
 
+        let second = api_create_node(&node);
         assert!(
             matches!(second, Err(NodeError::AlreadyExists)),
-            "Harusnya gagal karena duplikat"
+            "Harusnya gagal karena node dengan nama yang sama sudah ada"
         );
     }
 
     #[test]
     fn test_delete_node() {
+        let _guard = TEST_LOCK.lock().unwrap();
         let _ = fs::write(NODE_FILE, "{}");
-        let manager = NodeManager::get_instance();
-        manager.reset_for_test();
+
+        // Reset dan setup test
+        NODE_MANAGER.reset_for_test();
 
         let node = ApiRequest {
             version: "1.0".to_string(),
             action: Action::CreateNode,
-            request_id: "id001".to_string(),
-            timestamp: 17828661,
+            request_id: "id002".to_string(),
+            timestamp: 17828662,
             data: CreateNodeData {
-                name: "melisa api".to_string(),
-                pid: 100000,
-                url: "http://localhost:3000".to_string(),
-                domain: "melisa a".to_string(),
-                route_path: "/beta".to_string(),
+                name: "melisa-delete-test".to_string(),
+                pid: 100001,
+                url: "http://localhost:3001".to_string(),
+                domain: "delete.local".to_string(),
+                route_path: "/test".to_string(),
             },
         };
 
-        let create = match api_create_node(&node) {
-            Ok(proses) => proses.hash.to_string(),
-            Err(err) => format!("Error terjadi: {:?}", err),
+        let create_result = api_create_node(&node);
+        assert!(
+            create_result.is_ok(),
+            "Node harus berhasil dibuat terlebih dahulu"
+        );
+
+        let hash_target = create_result.unwrap().hash;
+
+        // Test delete
+        let delete_result = delete_node(&hash_target);
+        assert!(
+            delete_result.is_ok(),
+            "Harusnya sukses menghapus node yang ada"
+        );
+
+        // Verify node sudah terhapus (tidak bisa delete ulang)
+        let delete_again = delete_node(&hash_target);
+        assert!(
+            matches!(delete_again, Err(NodeError::NotFound)),
+            "Harusnya gagal menghapus node yang sudah terhapus"
+        );
+    }
+
+    #[test]
+    fn test_invalid_pid() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let _ = fs::write(NODE_FILE, "{}");
+        NODE_MANAGER.reset_for_test();
+
+        let invalid_node = ApiRequest {
+            version: "1.0".to_string(),
+            action: Action::CreateNode,
+            request_id: "id003".to_string(),
+            timestamp: 17828663,
+            data: CreateNodeData {
+                name: "invalid-pid-node".to_string(),
+                pid: 50000, // PID di bawah PID_START (100000)
+                url: "http://localhost:3002".to_string(),
+                domain: "invalid.local".to_string(),
+                route_path: "/invalid".to_string(),
+            },
         };
 
-        let hash_target = create;
-        let delete = delete_node(&hash_target);
-
-        // Pastikan sekarang harusnya sukses (Ok)
+        let result = api_create_node(&invalid_node);
         assert!(
-            delete.is_ok(),
-            "Harusnya sukses menghapus node, tetapi dapet error: {:?}",
-            delete
+            matches!(result, Err(NodeError::InvalidInput(_))),
+            "Harusnya gagal karena PID tidak valid"
         );
     }
 }

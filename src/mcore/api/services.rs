@@ -1,27 +1,30 @@
-use std::io::Stdout;
+// src/mcore/api/services.rs
 
 use crate::mcore::errors::e_node::NodeError;
-use crate::mcore::melisad::services::mconf::{HASH_LENGTH, PID_END, PID_START};
-use crate::mcore::melisad::services::node::{NodeManager, NodeProcess};
+use crate::mcore::melisad::services::mconf::{PID_END, PID_START}; // Pastikan import ini ada
+use crate::mcore::melisad::services::node::{NODE_MANAGER, NodeProcess};
 
-// api membuat node baru
-// data flow 2
-pub fn create_node(name: &str, pid: u32, url: &str, domain: &str, route_path: &str) -> Result<NodeProcess, NodeError> {
-    let node = NodeManager::get_instance();
-
+// Tambah argumen domain dan route_path di signature fungsi
+pub fn create_node(
+    name: &str,
+    pid: u32,
+    url: &str,
+    domain: &str,
+    route_path: &str,
+) -> Result<NodeProcess, NodeError> {
     if name.trim().is_empty() || !(PID_START..=PID_END).contains(&pid) {
         Err(NodeError::InvalidInput("invalid input format".to_string()))
     } else {
-        node.create(name, pid, url, domain, route_path)
+        // SEKARANG SUDAH DINAMIS: Menggunakan parameter kiriman API
+        NODE_MANAGER.create(name, pid, url, domain, route_path)
     }
 }
 
 pub fn delete_node(hash: &str) -> Result<(), NodeError> {
-    let node = NodeManager::get_instance();
-
-    if hash.trim().len() != HASH_LENGTH {
+    if hash.trim().len() != 64 {
         Err(NodeError::InvalidInput("invalid hash format".to_string()))
     } else {
-        node.delete(hash.trim())
+        // Gunakan instance global yang sama
+        NODE_MANAGER.delete(hash.trim())
     }
 }

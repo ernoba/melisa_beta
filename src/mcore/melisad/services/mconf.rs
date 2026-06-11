@@ -8,4 +8,4 @@ pub const PID_END: u32 = 999_999;
 
 pub const HASH_LENGTH: usize = 64; // panjang hash
 
-pub const CONFIG_PATH: &str = "config.toml"; // file konfigurasi
+pub const CONFIG_PATH: &str = "melisa.conf"; // file konfigurasi
