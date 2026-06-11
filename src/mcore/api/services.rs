@@ -6,13 +6,13 @@ use crate::mcore::melisad::services::node::{NodeManager, NodeProcess};
 
 // api membuat node baru
 // data flow 2
-pub fn create_node(name: &str, pid: u32, url: &str) -> Result<NodeProcess, NodeError> {
+pub fn create_node(name: &str, pid: u32, url: &str, domain: &str, route_path: &str) -> Result<NodeProcess, NodeError> {
     let node = NodeManager::get_instance();
 
     if name.trim().is_empty() || !(PID_START..=PID_END).contains(&pid) {
         Err(NodeError::InvalidInput("invalid input format".to_string()))
     } else {
-        node.create(name, pid, url)
+        node.create(name, pid, url, domain, route_path)
     }
 }
 

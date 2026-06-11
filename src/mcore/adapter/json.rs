@@ -27,6 +27,8 @@ pub struct CreateNodeData {
     name: String,
     pid: u32,
     url: String,
+    domain: String,
+    route_path: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -36,7 +38,7 @@ pub enum Action {
 }
 
 pub fn api_create_node(request: &ApiRequest<CreateNodeData>) -> Result<NodeProcess, NodeError> {
-    create_node(&request.data.name, request.data.pid, &request.data.url)
+    create_node(&request.data.name, request.data.pid, &request.data.url, &request.data.domain, &request.data.route_path)
 }
 
 pub fn api_delete_node(hash: &str) -> Result<(), NodeError> {
@@ -65,6 +67,8 @@ mod test {
                 name: "melisa api".to_string(),
                 pid: 100000,
                 url: "http://localhost:3000".to_string(),
+                domain: "melisa a".to_string(),
+                route_path: "/beta".to_string(),
             },
         };
 
@@ -98,6 +102,8 @@ mod test {
                 name: "melisa api".to_string(),
                 pid: 100000,
                 url: "http://localhost:3000".to_string(),
+                domain: "melisa a".to_string(),
+                route_path: "/beta".to_string(),
             },
         };
 

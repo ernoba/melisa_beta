@@ -14,6 +14,8 @@ pub struct NodeProcess {
     pub name: String,
     pub pid: u32,
     pub url: String,
+    pub domain: String,
+    pub route_path: String,
     pub status: NodeStatus,
 }
 
@@ -54,6 +56,8 @@ impl NodeManager {
         name: &str,
         pid: u32,
         url: &str,
+        domain: &str,
+        route_path: &str,
     ) -> std::result::Result<NodeProcess, NodeError> {
         let mut processes_lock = self.processes.write().unwrap();
         let hash = generate_hash(name);
@@ -67,6 +71,8 @@ impl NodeManager {
             name: name.to_string(),
             pid,
             url: url.to_string(),
+            domain: domain.to_string(),
+            route_path: route_path.to_string(),
             status: NodeStatus::Active,
         };
 
